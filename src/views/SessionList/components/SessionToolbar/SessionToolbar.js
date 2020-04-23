@@ -28,8 +28,8 @@ const useStyles = makeStyles(theme => ({
   }
 }));
 
-const UsersToolbar = props => {
-  const { className, ...rest } = props;
+const SessionToolbar = props => {
+  const { className, onLoad, ...rest } = props;
 
   const classes = useStyles();
 
@@ -40,27 +40,28 @@ const UsersToolbar = props => {
     >
       <div className={classes.row}>
         <span className={classes.spacer} />
-        <Button className={classes.importButton}>Import</Button>
-        <Button className={classes.exportButton}>Export</Button>
+        <Button className={classes.importButton} onClick={onLoad}>Load</Button>
+        <Button className={classes.importButton}>Export</Button>
+        
         <Button
           color="primary"
           variant="contained"
         >
-          Add user
+          Add Session
         </Button>
       </div>
       <div className={classes.row}>
         <SearchInput
           className={classes.searchInput}
-          placeholder="Search user"
+          placeholder="Search Session"
         />
       </div>
     </div>
   );
 };
 
-UsersToolbar.propTypes = {
+SessionToolbar.propTypes = {
   className: PropTypes.string
 };
 
-export default UsersToolbar;
+export default SessionToolbar;

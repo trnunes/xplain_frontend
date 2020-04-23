@@ -13,8 +13,9 @@ const useStyles = makeStyles(theme => ({
     minHeight: 'fit-content'
   },
   avatar: {
-    width: 60,
-    height: 60
+    width: 68,
+    height: 68,
+    borderRadius: '50%',
   },
   name: {
     marginTop: theme.spacing(1)
@@ -27,9 +28,10 @@ const Profile = props => {
   const classes = useStyles();
 
   const user = {
-    name: 'Shen Zhi',
-    avatar: '/images/avatars/avatar_11.png',
-    bio: 'Brain Director'
+    name: 'Thiago Nunes',
+    avatar: 'https://api.adorable.io/avatars/68/abott@adorable.png',
+    
+    bio: 'Passionate Developer'
   };
 
   return (
