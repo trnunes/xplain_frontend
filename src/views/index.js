@@ -9,3 +9,4 @@ export { default as SignUp } from './SignUp';
 export { default as Typography } from './Typography';
 export { default as EndpointList } from './EndpointList';
 export { default as SessionList } from './SessionList';
+export { default as Entity} from './Entity';

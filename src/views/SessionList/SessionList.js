@@ -24,9 +24,12 @@ const SessionList = () => {
   let history = useHistory();
   const loadHandler = async () => {
     if (selectedSessions.length){
+      
       let sessionId = selectedSessions[selectedSessions.length - 1];
-      console.log(sessionId);
+      let selectedSession = sessions.filter(s=>s.id === sessionId)[0];
+      
       localStorage.setItem('sessionId', sessionId);
+      localStorage.setItem('sessionTitle', selectedSession.title);
       history.push('/dashboard');
     }
   }

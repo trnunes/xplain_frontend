@@ -23,6 +23,8 @@ import {
 import Delete from '@material-ui/icons/Delete'
 
 import { getInitials } from 'helpers';
+import { useContext } from 'react';
+import MainContext from 'layouts/Main/MainContext';
 
 const useStyles = makeStyles(theme => ({
   root: {},
@@ -45,11 +47,11 @@ const useStyles = makeStyles(theme => ({
 }));
 
 const EndpointTable = props => {
-  const { onDoubleClick, className, endpoints, ...rest } = props;
-
+  const { selectedEndpoints, setSelectedEndpoints, onDoubleClick, className, endpoints, ...rest } = props;
+  
   const classes = useStyles();
 
-  const [selectedEndpoints, setSelectedEndpoints] = useState([]);
+  
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [page, setPage] = useState(0);
   

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Link as RouterLink } from 'react-router-dom';
+import React, { useState, useContext } from 'react';
+import { Link as RouterLink, useHistory } from 'react-router-dom';
 import clsx from 'clsx';
 import PropTypes from 'prop-types';
 import { fade, makeStyles } from '@material-ui/core/styles';
@@ -9,6 +9,7 @@ import NotificationsIcon from '@material-ui/icons/NotificationsOutlined';
 import AccountTree from '@material-ui/icons/AccountTreeOutlined';
 import SearchIcon from '@material-ui/icons/Search';
 import InputBase from '@material-ui/core/InputBase';
+import MainContext from '../../MainContext';
 
 const useStyles = makeStyles(theme => ({
   root: {
@@ -67,7 +68,8 @@ const useStyles = makeStyles(theme => ({
 
 const Topbar = props => {
   const { className, onSidebarOpen, ...rest } = props;
-  
+  const {setKeyword} = useContext(MainContext);
+  let history = useHistory();
 
   const classes = useStyles();
 
@@ -77,6 +79,14 @@ const Topbar = props => {
     
     console.log("Pivot clicked!");
     // setPivotOpen(true);
+  }
+
+  const handleSearchPressed = (event) => {
+    debugger;
+    if(event.key === 'Enter'){
+      setKeyword(event.target.value);
+      history.push('/dashboard');
+    }
   }
 
   return (
@@ -105,6 +115,7 @@ const Topbar = props => {
             </div>
             <InputBase
               placeholder="Search…"
+              onKeyPress={handleSearchPressed}
               classes={{
                 root: classes.inputRoot,
                 input: classes.inputInput,

@@ -13,6 +13,7 @@ import Autocomplete from '@material-ui/lab/Autocomplete';
 import { pivot } from 'services/api';
 import { useHistory } from 'react-router-dom';
 import DashboardContext from '../Dashboard/DashboardContext';
+import MainContext from 'layouts/Main/MainContext';
 
 const useStyles = makeStyles((theme) => ({
     button: {
@@ -35,6 +36,7 @@ export default function PivotDialog(props) {
   const [filterDuplicates, setFilterDuplicates] = useState(true);
   let history = useHistory();
   const { sessionId, addSet } = useContext(DashboardContext);
+  const { activeEndpoints } = useContext(MainContext);
   
   const handleClose = () => {
     console.log("Closing");
@@ -48,7 +50,7 @@ export default function PivotDialog(props) {
 
   const handleGo = () => {
     debugger;
-    pivot(setId, relationPathSelected, filterDuplicates, keepSourceItems)
+    pivot(setId, relationPathSelected, filterDuplicates, keepSourceItems, activeEndpoints)
     .then(resultSet=>{
       console.log("Result set: ", resultSet);
       console.log("addSet: ", addSet);

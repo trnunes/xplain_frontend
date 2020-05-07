@@ -2,12 +2,14 @@ import React, { useState, useContext, useEffect } from 'react';
 import ExpandMoreIcon from "@material-ui/icons/ExpandMore";
 import ChevronRightIcon from "@material-ui/icons/ChevronRight";
 import MoreVertIcon from '@material-ui/icons/MoreVert';
+import FullScreen from '@material-ui/icons/Fullscreen';
+import FullScreenExit from '@material-ui/icons/FullscreenExit';
 import { loadSet, fetchChildren, filterSetByKeyword } from '../../../../services/api';
 import MenuItem from '@material-ui/core/MenuItem';
 import Menu from '@material-ui/core/Menu';
 import GraphIcon from '../../../../icons/Graph';
 import SetContext from './context';
-
+import uuid from 'uuid/v1';
 import clsx from 'clsx';
 import PropTypes, { node } from 'prop-types';
 import { makeStyles } from '@material-ui/styles';
@@ -23,6 +25,8 @@ import {
   AppBar,
   Toolbar,
   Checkbox,
+  Dialog,
+  DialogContent,
 
 } from '@material-ui/core';
 
@@ -198,20 +202,30 @@ const filterTreeByKeyword = async (keyword) => {
 }
 
 const parseNodes = (items) => {
+    console.log("Items to parse: ", items);
+  let mapped = items.map((item)=>{
     
-  let mapped = items.map((item)=>(
-    {
+    let parsedNode = {
       id: item.node,
       name: item.text,
       description: 'Stub desc',
-      children: parseNodes(item.children),
-      page: 0,
-      numChildren: 5,
+      original: item,
       expanded: false,
       selected: false
+    }
+
+    if (item.children && item.children.length){
+      parsedNode.children = parseNodes(item.children);
+    } else {
+      parsedNode.children = [{id: uuid(), name: 'stub child', description: "I'm a place holder", expanded: false, selected: false }]
+    }
+
+    parsedNode.numChildren = parsedNode.children.length + 1;
+
+    return parsedNode;
+  });
     
-    }));
-    
+
     return mapped;
 }
 
@@ -222,13 +236,16 @@ const Xset2 = props => {
   const { text, gridId, setId, className, ...rest } = props;
   console.log("Key: ", gridId);
   
-  
+  const [currentPage, setCurrentPage] = useState(-1);
+  const [pageLimit, setPageLimit] = useState(2);  
   const [xset, setXset] = useState(loadSet(setId));
 
-  const [treeNodes, setTreeNodes] = useState(parseNodes(xset.children));
-  
+  const [treeNodes, setTreeNodes] = useState([]);
+  debugger
   const [selected, setSelected] = useState({});
-
+  const [open, setOpen] = useState(true);
+  const [maximize, setMaximize] = useState(false);
+  const [showLoadMore, setShowLoadMore] = useState(true)
   const classes = useStyles();
   
   const ItemIcons = {
@@ -238,6 +255,8 @@ const Xset2 = props => {
     "Xplain::Session": <Folder className={classes.labelIcon} />,
     "Xplain::ResultSet": <Folder className={classes.labelIcon} />,
   }     
+
+  useEffect(()=>{nextPage()}, []);
 
   const handleSearchInputChange = (event) => {
     if (event.target.value.length === 0) {
@@ -261,10 +280,15 @@ const Xset2 = props => {
   }
 
   const loadChildren = async (node: Node, pageLimit: number = 5) => {
-    await sleep(500);
-     node.children = parseNodes(fetchChildren(node.id));
-     node.expanded = !node.expanded;
-    return node.children
+    // await sleep(500);
+    
+    node.expanded = !node.expanded;
+    if (node.original.fetched){ return node.children;}
+    let childrenNodes = await fetchChildren(node.original);
+    node.children = parseNodes(childrenNodes);
+    node.numChildren = childrenNodes.length + 1;
+    debugger;
+    return node.children;
   };
   
   const onCheckAll = (event) => {
@@ -272,58 +296,107 @@ const Xset2 = props => {
       prevNodes.map(node=>({...node, selected: event.target.checked}))
     ));    
   }
+  const handleClose = () => {
+    console.log("Closing");
+    setOpen(false);
+  };
 
-  return (
-    // <SetContext.Provider value={{ addCheckedState, checkedState }}>
+  const handleMaximize = ()=>{
+    setMaximize(!maximize);
+  }
 
+  const nextPage = () => {
+    let nextPage = currentPage + 1;
+    setCurrentPage(nextPage);
+    let pageNodes = parseNodes(xset.children.slice((nextPage)*pageLimit, (nextPage*pageLimit) + pageLimit));
+    debugger;
+    let fullNodeList = treeNodes.concat(pageNodes);
+
+    if (JSON.stringify(treeNodes.map(n=>n.id)) === JSON.stringify(pageNodes.map(n=>n.id))){
+      setShowLoadMore(false);
+      return;
+    }
+    setTreeNodes(fullNodeList);
+
+  }
+  
+  const render = () =>{
+    const SetCard =  
       <Card
         {...rest}
         key={gridId}
         className={clsx(classes.root, className)}
       >
-        
-        <CardHeader
-          subtitle={`${xset.total} in total`}
-          title={<>{xset.text} <Checkbox onChange={onCheckAll}/> </>}
-        
-          action={
+      
+      <CardHeader
+        subtitle={`${xset.total} in total`}
+        title={<>{xset.text} <Checkbox onChange={onCheckAll}/> </>}
+      
+        action={
 
-            <CardActions className={classes.actions}>
+          <CardActions className={classes.actions}>
+            
+            <SearchInput
+              onChange={handleSearchInputChange}
+              className={classes.searchInput}
+              placeholder="Search Item"
+            />
+            <IconButton
+              aria-label="more"
+              aria-controls="long-menu"
+              aria-haspopup="true"
+              onClick={handleMaximize}
+            >
+            {maximize?(<FullScreenExit />) : (<FullScreen/>)}
               
-              <SearchInput
-                onChange={handleSearchInputChange}
-                className={classes.searchInput}
-                placeholder="Search Item"
-              />
+            </IconButton>
 
-              <ActionsMenu setSelected = {setSelected} setXset={setXset} xset={xset}/>
+            <ActionsMenu setSelected = {setSelected} setXset={setXset} xset={xset}/>
 
-            </CardActions>
+          </CardActions>
 
-          }
+        }
 
-        >
+      >
 
 
-        </CardHeader>
+      </CardHeader>
 
-        <Divider />
-        <CardContent className={classes.content}>
-          <Tree nodes={treeNodes} selectCallback={onSelect} loadChildren={loadChildren} />
-        </CardContent>
-        <Divider />
-        <CardActions className={classes.actions}>
-          <Button
-            color="primary"
-            size="small"
-            variant="text"
-          >
-            View all <ArrowRightIcon />
-          </Button>
-        </CardActions>
-      </Card>
-      // </SetContext.Provider>
-  );
+      <Divider />
+      <CardContent className={classes.content}>
+        <Tree nodes={treeNodes} selectCallback={onSelect} loadChildren={loadChildren} />
+        
+      </CardContent>
+      <Divider />
+      <CardActions className={classes.actions}>
+        {showLoadMore && <Button
+                            color="primary"
+                            size="small"
+                            variant="text"
+                            onClick={nextPage}
+                          >
+                            Load More <ArrowRightIcon />
+                          </Button>}
+        
+      </CardActions>
+    </Card>
+
+
+    if (maximize){
+      return (
+        <Dialog fullScreen={true} open={maximize} onClose={handleClose} scroll='body' aria-labelledby="form-dialog-title">
+        <DialogContent>
+          {SetCard}
+        </DialogContent>
+        </Dialog>
+      )       
+    } else {
+      return (SetCard);
+    }
+    
+  }
+
+  return render();
 };
 
 Xset2.propTypes = {

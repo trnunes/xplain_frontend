@@ -20,43 +20,103 @@ import {
   Xset2,
 } from './components';
 import { useState } from "react";
-import { loadSession } from "services/api";
+import { loadSession, sessionSave, addSetTo, keywordSearch, query } from "services/api";
 import { useEffect } from "react";
-import PivotDialog from "views/Pivot/Pivot";
+import { Typography, TextareaAutosize, IconButton } from "@material-ui/core";
+import MainContext from "layouts/Main/MainContext";
+import { makeStyles } from '@material-ui/core/styles';
+
+import Server from '../../services/sparql/Server';
+const { do_query } = Server;
+const useStyles = makeStyles(theme => ({
+  
+  operationButton: {
+    marginLeft: theme.spacing(1)
+  },
+} ));
 
 
 function GridDashboard() {
+  const classes = useStyles();
   const { items, setItems, moveItem } = useContext(GridContext);
+  const {keyword, activeEndpoints} = useContext(MainContext);
   
   const [sets, setSets] = useState([]);
+  const [endpoints, setEndpoints] = useState([]);
   let [sessionId, setSessionId] = useState(localStorage.getItem('sessionId'));
+  let [sessionTitle, setSessionTitle] = useState(localStorage.getItem('sessionTitle'));
   
+  const updateDashboard = (setsToAdd, atBeginning=false) => {
+    let updatedSets = [];
+    if (atBeginning) {
+      updatedSets = setsToAdd.concat([...sets]);
+    } else {
+      updatedSets = [...sets].concat(setsToAdd);
+    }
+    setSets(updatedSets);
+    setItems(updatedSets);
+  }
 
   useEffect(()=>{
     if(sessionId) {
+      debugger;
       let sets = loadSession(sessionId).sets
-      setSets(sets);
-      setItems(sets);
+      updateDashboard(sets);
     }
-    localStorage.clear()
-    debugger  
-  }, [sessionId]);
+    localStorage.clear();
+  }, [sessionId, activeEndpoints]);
 
+  useEffect(()=>{
+    if(keyword) {
+      keywordSearch(keyword, endpoints)
+      .then(resultSet=>updateDashboard([resultSet], true));
+    }
+  }, [keyword]);
+
+    
   const addSet = (set)=>{
-    let newSets = [...sets];
-    newSets.unshift(set);
-    setSets(newSets);
-    setItems(newSets);
-    debugger;
+    
+    updateDashboard([set], true);
+    addSetTo(set, sessionId);
   }
 
-  const handleSave = () => {
-    console.log("Saving session ...");
-  }  
+  
+  const handleSave = (title) => {
+    console.log("Saving session " + title + "...");
+    return sessionSave(title, sets, []);
+  }
+  
+  const executeQuery = () => {
+    query("", [], (resultSet)=>addSet(resultSet));
+  }
   return (
     <DashboardContext.Provider value={ {addSet, sessionId} } >
       <div className="App">
-      <OperationsBar onSave={handleSave} />      
+        {sessionTitle && <Typography variant="h3" color="inherit">{sessionTitle}</Typography>}
+        <div style={{display: 'flex'}}>
+          <Typography variant='h4'>Active Endpoints: </Typography>
+          {activeEndpoints.map(endpoint=><Typography style={{margin: '3px'}}color="inherit" key={endpoint.id}> {endpoint.title} | </Typography>)}
+        </div>
+        <OperationsBar onSave={handleSave} />
+        {/* <div>
+          <TextareaAutosize
+            rowsMax={50}
+            rowsMin= {20}
+            
+            aria-label="Query"
+            placeholder="Type your query here"
+            defaultValue="select * where {?s ?p ?o} limit 10"
+          />        
+
+          <IconButton
+              className={classes.operationButton}
+              color="inherit"
+              title="Execute query"
+              onClick={executeQuery}
+            >
+              Go
+          </IconButton>
+        </div> */}
         <Grid>
           {items.map(set => (
             <DragItem key={set.id} id={set.id} onMoveItem={moveItem}>

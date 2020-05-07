@@ -5,6 +5,7 @@ import { makeStyles, useTheme } from '@material-ui/styles';
 import { useMediaQuery } from '@material-ui/core';
 
 import { Sidebar, Topbar, Footer } from './components';
+import MainContext from './MainContext';
 
 const useStyles = makeStyles(theme => ({
   root: {
@@ -33,6 +34,9 @@ const Main = props => {
 
   const [openSidebar, setOpenSidebar] = useState(false);
 
+  const [keyword, setKeyword] = useState("");
+  const [activeEndpoints, setActiveEndpoints] = useState([]);
+
   const handleSidebarOpen = () => {
     setOpenSidebar(true);
   };
@@ -44,23 +48,26 @@ const Main = props => {
   const shouldOpenSidebar = isDesktop ? true : openSidebar;
 
   return (
-    <div
-      className={clsx({
-        [classes.root]: true,
-        [classes.shiftContent]: isDesktop
-      })}
-    >
-      <Topbar onSidebarOpen={handleSidebarOpen} />
-      <Sidebar
-        onClose={handleSidebarClose}
-        open={shouldOpenSidebar}
-        variant={isDesktop ? 'persistent' : 'temporary'}
-      />
-      <main className={classes.content}>
-        {children}
-        <Footer />
-      </main>
-    </div>
+    <MainContext.Provider value={ {keyword, setKeyword, activeEndpoints, setActiveEndpoints} } >
+      <div
+        className={clsx({
+          [classes.root]: true,
+          [classes.shiftContent]: isDesktop
+        })}
+      >
+        <Topbar onSidebarOpen={handleSidebarOpen} />
+
+        <Sidebar
+          onClose={handleSidebarClose}
+          open={shouldOpenSidebar}
+          variant={isDesktop ? 'persistent' : 'temporary'}
+        />
+        <main className={classes.content}>
+          {children}
+          <Footer />
+        </main>
+      </div>
+    </MainContext.Provider>
   );
 };
 

@@ -1,6 +1,15 @@
+import rp from 'request-promise';
+import helpers from './sparql/helpers';
+import ResourceQuery from './sparql/ResourceQuery';
+import ResourceHelper from './sparql/ResourceHelper';
 
 import cloneDeep from 'lodash/cloneDeep';
 import uuid from 'uuid/v1';
+
+const {getStaticEndpointParameters, getHTTPQuery, getHTTPGetURL} = helpers;
+
+const outputFormat = 'application/sparql-results+json';
+const headers = {'Accept': 'application/sparql-results+json'};
 
 let relations = [
   {
@@ -550,11 +559,12 @@ export function loadChildren(setId, nodeId){
   console.log(setId, nodeId);
   
   if (setId === nodeId){
+    debugger;
     return data[setId].children
   }
   function search(item){
     // console.log(item.id, nodeId)
-    if (item.id === nodeId) {
+    if (item.node === nodeId) {
       return item;
     }
     let result = null
@@ -578,19 +588,55 @@ export function loadChildren(setId, nodeId){
 };
 
 export function loadSet(setId){
-  return cloneDeep(data[setId]);  
+  return data[setId];  
 };
 
 export function loadSets() {
 
 };
 
-export function fetchChildren(nodeId) {
-  return loadChildren(nodeId.split("_")[0], nodeId);
+export async function fetchChildren(nodeObj) {
+  // return loadChildren(nodeObj.node.split("_")[0], nodeObj.node);
+  // nodeObj.id = "http://dbpedia.org/resource/Berlin";
+  const resourceQuery = new ResourceQuery();
+  const resourceHelper = new ResourceHelper();
+  let endpointParameters = getStaticEndpointParameters();
+
+  let query = resourceQuery.getPrefixes() + resourceQuery.getRelations(endpointParameters.graphName, nodeObj.id);
+  // let endpointParameters = sparqlEndpoint['generic'];
+  
+  
+  let user = {accountName: 'open'};
+  console.log(endpointParameters);
+  console.log(query)
+  let children = [];
+  let res = await rp.get({uri: getHTTPGetURL(getHTTPQuery('read', query, endpointParameters, outputFormat)), headers: headers});
+      
+  //exceptional case for user properties: we hide some admin props from normal users
+  console.log(res);
+  let rpIndex = resourceHelper.parseProperties(res, "", nodeObj.id);
+  
+  children = Object.keys(rpIndex.propIndex).map(propKey=>{
+    
+    let relationObject = {
+      id: propKey, 
+      node: uuid(),
+      fetched: true,
+      text: propKey, 
+      children: rpIndex.propIndex[propKey].map(value=>{
+        return (({ value, valueLabel }) => ({ id: value, value, valueLabel, text: value, node: uuid(), fetched: false, type:'Xplain::Entity', children:[] }))(value);          
+      })
+    }
+    return relationObject;
+  });
+
+  nodeObj.children = children;
+  
+  return nodeObj.children;
 }
 
 export function filterSetByKeyword(setId, keyword) {
-  let copiedSet = loadSet(setId);
+  let copiedSet = cloneDeep(loadSet(setId));
   
   const match = (item, keyword) => {
     return (item.id.toLowerCase().indexOf(keyword.toLowerCase()) >=0 || item.text.toLowerCase().indexOf(keyword.toLowerCase()) >= 0);
@@ -600,7 +646,7 @@ export function filterSetByKeyword(setId, keyword) {
     debugger;
 
     if (match(item, keyword)) {
-      return item;
+      return item;  
     }
 
     let childrenToRemove = [];
@@ -747,10 +793,105 @@ export function loadPreview(operation) {
       { text: 'American History X', year: 1998 },
       { text: 'Interstellar', year: 2014 },
   ];
+};
+
+export function addSetTo(set, sessionId) {
+  return new Promise((resolve, reject)=>{
+    data[set.id] = set;
+    let sessionList = sessions.filter(s=>s.id === sessionId);
+    if (sessionList.length) {
+      let sets = sessionList[0].sets;
+      let index = sets.findIndex(s=> s === set.id);
+      if (index >= 0) {
+        sets.splice(index, 1, set.id);        
+      } else {
+        sets.push(set.id);
+      }      
+    }
+    resolve(set.id);
+  });
+};
+
+export function sessionSave(title, sets, endpoints) {
+  
+  const promise = new Promise( (resolve, reject) =>{
+    if (!sets.length){ reject("Cannot save an empty session!")}
+    if (!title) { reject("Cannot save an untitled session. Please, inform a valid title!")}
+
+    const id = title.replace(" ", "_");
+  
+    let sessionObj = {
+      id: id,
+      title: title,
+      url: `http://xplain.tecweb.com.br/${id}`,
+      count: sets.length,
+      sets: sets.map(s=>s.id),
+      endpoints: endpoints
+    }
+  
+    const index = sessions.findIndex(s=>s.id===id);
+    if(index){
+      sessions.splice(index, 1, sessionObj);
+      resolve(id);
+    } else {
+      sessions.push(sessionObj);
+      resolve(id);
+    }
+  });
+  return promise;
 }
 
-export function pivot(setId, relationPath, filterDuplicates, keepSourceItems) {
+export async function query(queryStr="", endpoint=[], callback){
+  const resourceQuery = new ResourceQuery();
+  const resourceHelper = new ResourceHelper();
+  let endpointParameters = getStaticEndpointParameters();
+  let query = resourceQuery.getPrefixes() + resourceQuery.getRelations(endpointParameters.graphName, "http://dbpedia.org/resource/Brazil");
+  // let endpointParameters = sparqlEndpoint['generic'];
+  
+  
+  let user = {accountName: 'open'};
+  console.log(endpointParameters);
+  console.log(query)
+  let copiedSet = cloneDeep(data['set1']);
+  copiedSet.id = uuid();
+  copiedSet.node = uuid();
+  copiedSet.text = copiedSet.id;
+  
+  data[copiedSet.id] = copiedSet;
+  let children = [];
+  await rp.get({uri: getHTTPGetURL(getHTTPQuery('read', query, endpointParameters, outputFormat)), headers: headers}).then(function(res){
+      
+      //exceptional case for user properties: we hide some admin props from normal users
+      console.log(res);
+      let rpIndex = resourceHelper.parseProperties(res, "", "http://dbpedia.org/resource/Brazil");
+      
+      children = Object.keys(rpIndex.propIndex).map(propKey=>{
+        
+        let relationObject = {
+          id: propKey, 
+          node: `${copiedSet.id}_${uuid()}`,
+          text: propKey, 
+          children: rpIndex.propIndex[propKey].map(value=>{
+            return (({ value, valueLabel }) => ({ id: value, value, valueLabel, text: value, node: `${copiedSet.id}_${uuid()}`, type:'Xplain::Entity', children:[] }))(value);          
+          })
+        }
+        return relationObject;
+      });
 
+      
+      console.log(rpIndex);
+
+  }).catch(function (err) {
+      console.log(err);
+  });
+  debugger;
+  copiedSet.children = children;
+  callback(copiedSet);
+}
+
+// Exploration Operations
+export function pivot(setId, relationPath, filterDuplicates, keepSourceItems, endpoints) {
+  console.log("PIVOT OVER ENDPOINTS: ", endpoints);
   return new Promise(resolve => {
     setTimeout(() => {
       let copiedSet = cloneDeep(data['set1']);
@@ -764,5 +905,37 @@ export function pivot(setId, relationPath, filterDuplicates, keepSourceItems) {
       );
     }, 10);
   });
+};
+
+export async function keywordSearch(keyword, endpoints) {
+  let endpointParameters = getStaticEndpointParameters();
+  
+  let user = {accountName: 'open'};
+  console.log(endpointParameters);
+  let copiedSet = cloneDeep(data['set1']);
+  copiedSet.id = uuid();
+  copiedSet.node = uuid();
+  copiedSet.text = copiedSet.id;
+  
+  data[copiedSet.id] = copiedSet;
+  let children = [];
+  let query = 'http://lookup.dbpedia.org/api/search/KeywordSearch?QueryString=' + keyword;
+  console.log("Query: ", query)
+  const headers = {'Accept': 'application/json'}
+  await rp.get({uri: query, headers: headers}).then(function(res){
+      const resultObj = JSON.parse(res);
+      children = resultObj.results.map(value=>{
+        return (({ uri, label }) => ({ id: uri, text: label, fetched: false, node: `${copiedSet.id}_${uuid()}`, type:'Xplain::Entity', children:[] }))(value);          
+      });
+    
+      //exceptional case for user properties: we hide some admin props from normal users
+      console.log("Results: ", res);
+      
+  }).catch(function (err) {
+      console.log(err);
+  });
+  debugger;
+  copiedSet.children = children;
+  return copiedSet;
 
 }

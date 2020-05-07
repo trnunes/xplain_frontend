@@ -29,7 +29,7 @@ const useStyles = makeStyles(theme => ({
 }));
 
 const EndpointToolbar = props => {
-  const { className, onAdd, ...rest } = props;
+  const { className, onAdd, onEnable, ...rest } = props;
 
   const classes = useStyles();
 
@@ -40,7 +40,7 @@ const EndpointToolbar = props => {
     >
       <div className={classes.row}>
         <span className={classes.spacer} />
-        <Button className={classes.importButton}>Enable</Button>
+        <Button className={classes.importButton} onClick={onEnable}>Enable</Button>
         
         <Button
           color="primary"

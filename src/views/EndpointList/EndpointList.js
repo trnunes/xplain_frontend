@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { makeStyles } from '@material-ui/styles';
 
 import { EndpointToolbar, EndpointTable } from './components';
 import { listEndpoints, addEndpoint } from '../../services/api'
 
 import FormControl from '@material-ui/core/FormControl';
-import { InputLabel, Input, FormHelperText, Button, FormGroup, Switch, FormControlLabel, TextField } from '@material-ui/core';
+import { InputLabel, Input, FormHelperText, Button, FormGroup, Switch, FormControlLabel, TextField, Typography } from '@material-ui/core';
+import MainContext from 'layouts/Main/MainContext';
 
 const useStyles = makeStyles(theme => ({
   root: {
@@ -147,10 +148,17 @@ const EndpointList = () => {
   const classes = useStyles();
   const [renderAdd, setRenderAdd] = useState(false);
   const [endpoints, setEndpoints] = useState(listEndpoints());
+  const [selectedEndpoints, setSelectedEndpoints] = useState([]);
+  const { activeEndpoints, setActiveEndpoints } = useContext(MainContext);
 
   const handleAdd = () => {
 
     setRenderAdd(true);
+  }
+
+  const handleEnableEndpoint = () => {
+    debugger;
+    setActiveEndpoints(selectedEndpoints.map(endpointId=>endpoints.filter(e=>e.id === endpointId)[0]));
   }
 
 
@@ -170,11 +178,14 @@ const EndpointList = () => {
 
   return (
     <div className={classes.root}>
-      {renderAdd && <AddForm setEndpoints={setEndpoints} setRenderAdd={setRenderAdd}/>}
-      <EndpointToolbar onAdd={handleAdd} />
+      <div style={{display: 'flex'}}>
+        <Typography variant='h4'>Active Endpoints: </Typography>
+        {activeEndpoints.map(endpoint=><Typography style={{margin: '3px'}}color="inherit" key={endpoint.id}> {endpoint.title} | </Typography>)}
+      </div>
+      <EndpointToolbar onAdd={handleAdd} onEnable={handleEnableEndpoint}/>
       
       <div className={classes.content}>
-        <EndpointTable endpoints={endpoints} onDoubleClick={handleDoubleClick}/>
+        <EndpointTable endpoints={endpoints} onDoubleClick={handleDoubleClick} setSelectedEndpoints={setSelectedEndpoints} selectedEndpoints={selectedEndpoints}/>
       </div>
     </div>
   );
